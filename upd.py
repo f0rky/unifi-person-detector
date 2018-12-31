@@ -53,7 +53,8 @@ class UnifiPersonDetector():
         for line in tailer.follow(open(self.unifi_record_log)):
             if 'STOPPING' in line and 'motionRecording' in line:
                 split_row = line.split()
-#                logging.info('---------- Camera: %s ----------', split_row)
+                # Debug to output line captured from recording.log
+                #logging.debug('Capture: %s', split_row)
                 rec_time = split_row[2].split('.')[0]
                 rec_camera_id, rec_camera_name = split_row[4][6:].strip('[]').split('|')
 
@@ -135,14 +136,6 @@ class UnifiPersonDetector():
             detection = "./darknet detector demo ./cfg/coco.data ./cfg/yolov3-tiny.cfg ./yolov3-tiny.weights %s -i 0 -thresh 0.25 -out_filename ./result.avi" % (filepath)
             logging.info("Running command: %s",detection)
             subprocess.call(detection, shell=True, stdout=outfile, cwd=r'/opt/darknet')
- #           subprocess.call(
- #               ["./darknet", "detector", "demo", "./cfg/coco.data",
- #                "./cfg/yolov3-tiny.cfg", "./yolov3-tiny.weights", filepath, "-i", "0",
- #                "-thresh", "0.25",
- #                "-out_filename", "/opt/darknet/result.avi"],
- #               cwd=r'/opt/darknet/',
- #               stdout=outfile,
- #               )
         return
 
     @staticmethod
@@ -189,7 +182,9 @@ class UnifiPersonDetector():
         logging.debug('PARAM 1: recording_camera_id=' + recording_camera_id)
         logging.debug('PARAM 2: recording_id=' + recording_id)
 
+        #
         # Replace ids with your camera ids from the record log, add elif if you have more cameras
+        # Needs a better way of doing this 
         if recording_camera_id == "0418D6236DDD":
             #Baksidan camera
             camera_path = "/mnt/videos/79f56025-924b-392c-beaf-96b2b81893c0/"
