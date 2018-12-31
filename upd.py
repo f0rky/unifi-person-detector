@@ -17,6 +17,9 @@ import tailer
 import requests
 import re
 import configparser
+import json
+from unifiapi import get_camera
+from unifiapi import list_cameras
 
 config = configparser.ConfigParser()
 config.read('config.ini')
@@ -31,6 +34,7 @@ RECORD_LOG = config['DEFAULT']['RECORD_LOG']
 HASS_HOST = config['DEFAULT']['HASS_HOST']
 HASS_API = config['DEFAULT']['HASS_API']
 DARKNET = config['DEFAULT']['DARKNET']
+VIDEO_URL = config['DEFAULT']['VIDEO_URL']
 
 class UnifiPersonDetector():
     """
@@ -42,6 +46,7 @@ class UnifiPersonDetector():
         self.unifi_record_log = RECORD_LOG
         self.hass_api_pass = HASS_API
         self.hass_host = HASS_HOST
+        self.video_url = VIDEO_URL
         logging.info('HomeAssistant %s' % self.hass_host)
     def run(self):
         """
@@ -49,6 +54,7 @@ class UnifiPersonDetector():
         out when a new recording have taken place.
         """
         logging.debug('ENTERING FUNCTION: run()')
+        list_cameras()
 
         for line in tailer.follow(open(self.unifi_record_log)):
             if 'STOPPING' in line and 'motionRecording' in line:
@@ -75,7 +81,7 @@ class UnifiPersonDetector():
                 if self.get_detection_result():
                     self.copy_result_movie(rec_camera_name,rec_timestamp)
                     notification_image = self.get_notification_image(rec_camera_id, rec_id)
-                    self.send_ios_notification(notification_image, rec_camera_name, rec_timestamp)
+                    self.send_discord_notification(notification_image, rec_camera_name, rec_timestamp)
                 else:
                     logging.info('Person NOT FOUND in recording.')
 
@@ -83,6 +89,7 @@ class UnifiPersonDetector():
                 os.remove(rec_file)
 
             time.sleep(1)
+
 
     def download_recording(self, recording_id):
         """
@@ -155,7 +162,6 @@ class UnifiPersonDetector():
         with open(result_file, 'r') as result:
             for line in result:
                 if 'person: ' in line:
-                    #hax
                     person_regex = re.compile(r'person: \d{1,}%')
                     search_results = person_regex.search(line)
                     person = search_results.group()
@@ -170,6 +176,7 @@ class UnifiPersonDetector():
 
         return found_person
 
+
     @staticmethod
     def get_notification_image(recording_camera_id, recording_id):
         """
@@ -182,48 +189,20 @@ class UnifiPersonDetector():
         logging.debug('PARAM 1: recording_camera_id=' + recording_camera_id)
         logging.debug('PARAM 2: recording_id=' + recording_id)
 
-        #
-        # Replace ids with your camera ids from the record log, add elif if you have more cameras
-        # Needs a better way of doing this 
-        if recording_camera_id == "0418D6236DDD":
-            #Baksidan camera
-            camera_path = "/mnt/videos/79f56025-924b-392c-beaf-96b2b81893c0/"
-        elif recording_camera_id == "802AA84E1742":
-        # Streetview 802AA84E1742
-            camera_path = "/mnt/videos/9eba181b-933e-3159-8ee2-7ae716d2630e/"
-        elif recording_camera_id == "802AA84E16FB":
-            #frontlawn
-            camera_path = "/mnt/videos/e8fcbb01-a79f-3710-a96c-03b95776ceb2/"
-        elif recording_camera_id == "802AA84EF07F":
-            #Driveway
-            camera_path = "/mnt/videos/8f5f03fc-bd7a-31b5-8ffd-57b77ef00a58/"
-        elif recording_camera_id == "0418D6A13494":
-            #hoodrat
-            camera_path = "/mnt/videos/ff61c9ca-705e-3894-9c8b-b7f8c1c99f04/"
-        elif recording_camera_id == "802AA84E2006":
-            #backpad
-            camera_path = "/mnt/videos/87a89e17-2274-378e-aada-271c8db935da/"
-        elif recording_camera_id == "0418D623E577":
-            #smokers
-            camera_path = "/mnt/videos/4fe43285-478c-3d92-ac03-4ec6d385085c/"
-        elif recording_camera_id == "FCECDAD89E5D":
-	   #Jumping Blacks
-           camera_path = "/mnt/videos/010b17ae-c643-3334-9bbf-accfc9ee3950/"
-        elif recording_camera_id == "802AA84EF45C":
-	   #backdoor watch
-           camera_path = "/mnt/videos/01ff88f8-f308-302b-9510-e339bcb9858b/"
-
+        camera_path = get_camera(recording_camera_id)
         year, month, day = time.strftime("%Y,%m,%d").split(',')
 
         #Look in todays image folder.
-        image_path = (camera_path + '/' + year + '/' + month + '/' + day + '/meta/' +
-                      recording_id + "_full.jpg")
+        image_path = ('%s/%s/%s/%s/meta/%s_full.jpg' % (camera_path, year, month, day, recording_id))
+        #image_path = (camera_path + '/' + year + '/' + month + '/' + day + '/meta/' +
+        #              recording_id + "_full.jpg")
 
         #Look in yesterdays image folder.
         yesterday = datetime.datetime.now() - datetime.timedelta(days=1)
         year, month, day = yesterday.strftime("%Y,%m,%d").split(',')
-        image_path_yd = (camera_path + '/' + year + '/' + month + '/' +
-                         day + '/meta/' + recording_id + "_full.jpg")
+        image_path_yd  = ('%s/%s/%s/%s/meta/%s_full.jpg' % (camera_path, year, month, day, recording_id))
+        #image_path_yd = (camera_path + '/' + year + '/' + month + '/' +
+        #                 day + '/meta/' + recording_id + "_full.jpg")
 
         if os.path.isfile(image_path):
             logging.info('Notification image found: ' + image_path)
@@ -233,7 +212,9 @@ class UnifiPersonDetector():
             return image_path_yd
         else:
             logging.error('Notification image was not found.')
+            logging.info('Paths checked: %s %s' % (image_path, image_path_yd))
             return
+
 
     @staticmethod
     def copy_result_movie(camera_name, rec_timestamp):
@@ -261,7 +242,8 @@ class UnifiPersonDetector():
             # if copy went good
             logging.info('Copied resultfile to ' + dest)
 
-    def send_ios_notification(self, notification_image, camera_name, rec_timestamp):
+
+    def send_discord_notification(self, notification_image, camera_name, rec_timestamp):
         """
         This function is used for sending a notification about the detection.
         """
@@ -275,8 +257,8 @@ class UnifiPersonDetector():
         dest = ("%s/%s_%s.jpg" % (dest_path, timestamp, camera_name))
         notification_url = ("https://cdn.data.net.nz/notification_images/%s/%s/%s_%s.jpg"
                 % (month, day, timestamp, camera_name))
-        video_url = ("https://cdn.data.net.nz/recordings/%s/%s/%s/%s_%s.mp4"
-                % (year, month, day, timestamp, camera_name))
+        video_url = ("%s/%s/%s/%s/%s_%s.mp4"
+                % (VIDEO_URL, year, month, day, timestamp, camera_name))
 
         # Create path if not existing
         if not os.path.exists(dest_path):
