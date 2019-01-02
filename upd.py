@@ -14,6 +14,7 @@ import shutil
 import datetime
 import sys
 import tailer
+import tailhead
 import requests
 import re
 import configparser
@@ -56,39 +57,40 @@ class UnifiPersonDetector():
         logging.debug('ENTERING FUNCTION: run()')
         list_cameras()
 
-        for line in tailer.follow(open(self.unifi_record_log)):
-            if 'STOPPING' in line and 'motionRecording' in line:
-                split_row = line.split()
-                # Debug to output line captured from recording.log
-                #logging.debug('Capture: %s', split_row)
-                rec_time = split_row[2].split('.')[0]
-                rec_camera_id, rec_camera_name = split_row[4][6:].strip('[]').split('|')
+        for line in tailhead.follow_path(self.unifi_record_log):
+            if line is not None:
+                if 'STOPPING' in line and 'motionRecording' in line:
+                    split_row = line.split()
+                    # Debug to output line captured from recording.log
+                    #logging.debug('Capture: %s', split_row)
+                    rec_time = split_row[2].split('.')[0]
+                    rec_camera_id, rec_camera_name = split_row[4][6:].strip('[]').split('|')
 
-                logging.info('---------- Camera: %s ----------', rec_camera_name)
-                rec_id = split_row[7].split(':')[1]
+                    logging.info('---------- Camera: %s ----------', rec_camera_name)
+                    rec_id = split_row[7].split(':')[1]
 
-                logging.info('---------- New recording ----------')
-                logging.info('---------- Camera ID: %s Time: %s Rec ID: %s ----------', rec_camera_name, rec_time, rec_id)
-                rec_timestamp = rec_time.replace(":", "_")
-                # Download the recording.
-                rec_file = self.download_recording(rec_id)
-                if not rec_file:
-                    continue
+                    logging.info('---------- New recording ----------')
+                    logging.info('---------- Camera ID: %s Time: %s Rec ID: %s ----------', rec_camera_name, rec_time, rec_id)
+                    rec_timestamp = rec_time.replace(":", "_")
+                    # Download the recording.
+                    rec_file = self.download_recording(rec_id)
+                    if not rec_file:
+                        continue
 
-                # Run detection on the recording.
-                self.run_detection(rec_file)
+                    # Run detection on the recording.
+                    self.run_detection(rec_file)
 
-                if self.get_detection_result():
-                    self.copy_result_movie(rec_camera_name,rec_timestamp)
-                    notification_image = self.get_notification_image(rec_camera_id, rec_id)
-                    self.send_discord_notification(notification_image, rec_camera_name, rec_timestamp)
-                else:
-                    logging.info('Person NOT FOUND in recording.')
+                    if self.get_detection_result():
+                        self.copy_result_movie(rec_camera_name,rec_timestamp)
+                        notification_image = self.get_notification_image(rec_camera_id, rec_id)
+                        self.send_discord_notification(notification_image, rec_camera_name, rec_timestamp)
+                    else:
+                        logging.info('Person NOT FOUND in recording.')
 
-                # Destroy recording
-                os.remove(rec_file)
+                    # Destroy recording
+                    os.remove(rec_file)
 
-            time.sleep(1)
+                time.sleep(1)
 
 
     def download_recording(self, recording_id):
