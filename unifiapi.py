@@ -33,9 +33,7 @@ HASS_API = config['DEFAULT']['HASS_API']
 DARKNET = config['DEFAULT']['DARKNET']
 
 
-#logging.info("Camera API url: %s", url)
-
-#Queries the API and gets the cameras
+# list_cameras - Queries the API and gets the cameras
 def list_cameras():
     url = ("http://%s:7080/api/2.0/camera?apiKey=%s" % (NVR_HOST, API_KEY))
     # Debug url
@@ -47,7 +45,9 @@ def list_cameras():
         logging.debug('========== Found camera: %s  ==========' %cameras['name'])
         logging.debug('MAC: %s' % cameras['mac'])
         logging.debug('UUID: %s' % cameras['uuid'])
-    return
+    return cameras
+
+
 # get_camera - returns path to camera mac  Looks up the UUID
 def get_camera(camera):
     url = ("http://%s:7080/api/2.0/camera?apiKey=%s" % (NVR_HOST, API_KEY))
@@ -65,6 +65,8 @@ def get_camera(camera):
             logging.info("Found camara path:%s" % camera_path)
             return camera_path
 
+
+# Run when not ported
 if __name__ == "__main__":
     list_cameras()
     print(get_camera("802AA84EF45C"))
