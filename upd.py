@@ -142,7 +142,7 @@ class UnifiPersonDetector():
         # Return true or false if person is detected
         logging.info("Running detection on " + filepath)
         with open('/opt/darknet/result.txt', "wb") as outfile:
-            detection = "./darknet detector demo ./cfg/coco.data ./cfg/yolov3-tiny.cfg ./yolov3-tiny.weights %s -i 0 -thresh 0.25 -out_filename ./result.avi" % (filepath)
+            detection = "./darknet detector demo ./cfg/coco.data ./cfg/yolov3-tiny.cfg ./yolov3-tiny.weights %s -i 0 -thresh 0.25 -out_filename ./result.avi -dont_show" % (filepath)
             logging.info("Running command: %s",detection)
             subprocess.call(detection, shell=True, stdout=outfile, cwd=r'/opt/darknet')
         return
