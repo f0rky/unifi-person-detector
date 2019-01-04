@@ -66,11 +66,17 @@ class UnifiPersonDetector():
                     rec_time = split_row[2].split('.')[0]
                     rec_camera_id, rec_camera_name = split_row[4][6:].strip('[]').split('|')
 
+                    logging.info('---------- New recording ----------')
                     logging.info('---------- Camera: %s ----------', rec_camera_name)
                     rec_id = split_row[7].split(':')[1]
 
-                    logging.info('---------- New recording ----------')
                     logging.info('---------- Camera ID: %s Time: %s Rec ID: %s ----------', rec_camera_name, rec_time, rec_id)
+                    d1 = datetime.datetime.now().strftime("%H:%M:%S")
+                    d1 = str(d1)
+                    d2 = rec_time
+                    FMT = "%H:%M:%S"
+                    offby = datetime.datetime.strptime(d1, FMT) - datetime.datetime.strptime(d2, FMT)
+                    logging.info('---------- Detection behind by %s ----------', offby)
                     rec_timestamp = rec_time.replace(":", "_")
                     # Download the recording.
                     rec_file = self.download_recording(rec_id)
@@ -106,7 +112,7 @@ class UnifiPersonDetector():
         url = ("http://%s%s%s%s%s" % (self.unifi_nvr_host, ":7080/api/2.0/recording/",
                                       recording_id, "/download/?apiKey=", self.unifi_api_key))
 
-        logging.info("Download recording with url: %s", url)
+        logging.debug("Download recording with url: %s", url)
 
         try:
             recf = urllib.request.urlopen(url)
@@ -118,13 +124,13 @@ class UnifiPersonDetector():
         except urllib.error.URLError as err:
             logging.error('Reason: %s', err.reason)
 
-        logging.info('Downloaded the recording file!')
+        logging.debug('Downloaded the recording file!')
 
         if not os.path.isfile(recording_file_path):
             logging.error('Recording file does not exist! Something went wrong when downloading')
             return
         else:
-            logging.info('Verified that file existed: ' + recording_file_path)
+            logging.debug('Verified that file existed: ' + recording_file_path)
             os.chmod(recording_file_path, 0o777)
             return recording_file_path
 
@@ -142,8 +148,8 @@ class UnifiPersonDetector():
         # Return true or false if person is detected
         logging.info("Running detection on " + filepath)
         with open('/opt/darknet/result.txt', "wb") as outfile:
-            detection = "./darknet detector demo ./cfg/coco.data ./cfg/yolov3-tiny.cfg ./yolov3-tiny.weights %s -i 0 -thresh 0.25 -out_filename ./result.avi" % (filepath)
-            logging.info("Running command: %s",detection)
+            detection = "./darknet detector demo ./cfg/coco.data ./cfg/yolov3-tiny.cfg ./yolov3-tiny.weights %s -i 0 -thresh 0.25 -out_filename ./result.avi -dont_show" % (filepath)
+            logging.debug("Running command: %s",detection)
             subprocess.call(detection, shell=True, stdout=outfile, cwd=r'/opt/darknet')
         return
 
@@ -214,7 +220,7 @@ class UnifiPersonDetector():
             return image_path_yd
         else:
             logging.error('Notification image was not found.')
-            logging.info('Paths checked: %s %s' % (image_path, image_path_yd))
+            logging.debug('Paths checked: %s %s' % (image_path, image_path_yd))
             return
 
 
@@ -235,13 +241,13 @@ class UnifiPersonDetector():
         try:
             shutil.copy(result_movie, dest)
             ffmpeg = "/usr/bin/ffmpeg -y -i %s -i %s -map 0:v:0 -map 1:a:0 -acodec copy %s -f null - 2> audiocopyoutput.txt" % (result_movie, recording_file_path, dest)
-            logging.info("Running command: %s",ffmpeg)
+            logging.debug("Running command: %s",ffmpeg)
             subprocess.call(ffmpeg , shell=True)
 
         except IOError as err:
             logging.error("Unable to copy file. %s", err)
         else:
-            # if copy went good
+            # Successful copy
             logging.info('Copied resultfile to ' + dest)
 
 
