@@ -65,12 +65,12 @@ class UnifiPersonDetector():
                     #logging.debug('Capture: %s', split_row)
                     rec_time = split_row[2].split('.')[0]
                     rec_camera_id, rec_camera_name = split_row[4][6:].strip('[]').split('|')
-
+                    rec_duration = split_row[9]
                     logging.info('---------- New recording ----------')
                     logging.info('---------- Camera: %s ----------', rec_camera_name)
                     rec_id = split_row[7].split(':')[1]
 
-                    logging.info('---------- Camera ID: %s Time: %s Rec ID: %s ----------', rec_camera_name, rec_time, rec_id)
+                    logging.info('---------- Camera ID: %s Time: %s Rec ID: %s %s----------', rec_camera_name, rec_time, rec_id, rec_duration)
                     d1 = datetime.datetime.now().strftime("%H:%M:%S")
                     d1 = str(d1)
                     d2 = rec_time
