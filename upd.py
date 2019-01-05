@@ -75,7 +75,7 @@ class UnifiPersonDetector():
                     d1 = str(d1)
                     d2 = rec_time
                     FMT = "%H:%M:%S"
-                    offby = datetime.datetime.strptime(d1, FMT) - datetime.datetime.strptime(d2, FMT)
+                    offby = datetime.datetime.strptime(d2, FMT) - datetime.datetime.strptime(d1, FMT)
                     logging.info('---------- Detection behind by %s ----------', offby)
                     rec_timestamp = rec_time.replace(":", "_")
                     # Download the recording.
@@ -108,7 +108,7 @@ class UnifiPersonDetector():
         logging.debug('ENTERING FUNCTION: download_recording(params)')
         logging.debug('PARAM 1: recording_id=%s', recording_id)
 
-        recording_file_path = ("%s/%s" % (CURRENT_DIR, "recording.mp4"))
+        recording_file_path = ("%s/%s" % (CURRENT_DIR, "recording.avi"))
         url = ("http://%s%s%s%s%s" % (self.unifi_nvr_host, ":7080/api/2.0/recording/",
                                       recording_id, "/download/?apiKey=", self.unifi_api_key))
 
@@ -175,7 +175,7 @@ class UnifiPersonDetector():
                     person = search_results.group()
 
                     logging.info('Found person on result line: %s', line.strip())
-                    logging.info('%s',line.split(':')[1].strip().strip('%'))
+                    #logging.info('%s',line.split(':')[1].strip().strip('%'))
                     if int(person.split(':')[1].strip().strip('%')) > 80:
                         found_person = True
                         break
