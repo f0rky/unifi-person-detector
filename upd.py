@@ -75,7 +75,7 @@ class UnifiPersonDetector():
                     d1 = str(d1)
                     d2 = rec_time
                     FMT = "%H:%M:%S"
-                    offby = datetime.datetime.strptime(d2, FMT) - datetime.datetime.strptime(d1, FMT)
+                    offby = datetime.datetime.strptime(d1, FMT) - datetime.datetime.strptime(d2, FMT)
                     logging.info('---------- Detection behind by %s ----------', offby)
                     rec_timestamp = rec_time.replace(":", "_")
                     # Download the recording.
@@ -235,7 +235,7 @@ class UnifiPersonDetector():
         timestamp = rec_timestamp
         dest_path = ("%s/recordings/%s/%s/%s" % (CURRENT_DIR, year, month, day))
         dest = ("%s/%s_%s.mp4" % (dest_path, timestamp, camera_name))
-        recording_file_path = ("%s/%s" % (CURRENT_DIR, "recording.mp4"))
+        recording_file_path = ("%s/%s" % (CURRENT_DIR, "recording.avi"))
         if not os.path.exists(dest_path):
             os.makedirs(dest_path)
         try:
