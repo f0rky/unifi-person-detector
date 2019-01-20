@@ -4,10 +4,13 @@ This script is used to run YOLO object detection on video files recorded by the 
 
 Basic requirements:
 ```
-Python 
-Darknet + Yolo
-Unifi Controller
-HomeAssistant (Discord)
+Python 3.6+
+Nvidia GPU 4GB+ (CUDA)
+Darknet + Yolo (https://github.com/AlexeyAB/darknet)
+Unifi Controller (v3.9+)
+HomeAssistant (Notifications via Discord/iOS)
+Webserver (HASS can access)
+
 ```
 
 Create startscript with the following content (Ubuntu 16.04)
