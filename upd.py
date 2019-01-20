@@ -76,8 +76,13 @@ class UnifiPersonDetector():
                     d2 = rec_time
                     FMT = "%H:%M:%S"
                     offby = datetime.datetime.strptime(d1, FMT) - datetime.datetime.strptime(d2, FMT)
+                    offby = offby.total_seconds()
+                    logging.info('---------- Recording time: %s ----------', rec_time)
+                    logging.info('---------- Process   time: %s ----------', d1)
                     logging.info('---------- Detection behind by %s ----------', offby)
                     rec_timestamp = rec_time.replace(":", "_")
+                    if (offby > 9000):
+                        continue
                     # Download the recording.
                     rec_file = self.download_recording(rec_id)
                     if not rec_file:
@@ -88,6 +93,7 @@ class UnifiPersonDetector():
 
                     if self.get_detection_result():
                         self.copy_result_movie(rec_camera_name,rec_timestamp)
+                        self.copy_results_output(rec_camera_name,rec_timestamp)
                         notification_image = self.get_notification_image(rec_camera_id, rec_id)
                         self.send_discord_notification(notification_image, rec_camera_name, rec_timestamp)
                     else:
@@ -96,7 +102,8 @@ class UnifiPersonDetector():
                     # Destroy recording
                     os.remove(rec_file)
 
-                time.sleep(1)
+                else:
+                    time.sleep(1)
 
 
     def download_recording(self, recording_id):
@@ -249,6 +256,29 @@ class UnifiPersonDetector():
         else:
             # Successful copy
             logging.info('Copied resultfile to ' + dest)
+
+
+    @staticmethod
+    def copy_results_output(camera_name, rec_timestamp):
+        """
+        This function copies the result.tx from darknet folder into an archive
+        """
+        result_output = "/opt/darknet/result.txt"
+        year, month, day = time.strftime("%Y,%m,%d").split(',')
+        #timestamp = time.strftime('%H_%M_%S')
+        timestamp = rec_timestamp
+        dest_path = ("%s/recordings/%s/%s/%s" % (CURRENT_DIR, year, month, day))
+        dest = ("%s/%s_%s.txt" % (dest_path, timestamp, camera_name))
+        if not os.path.exists(dest_path):
+            os.makedirs(dest_path)
+        try:
+            shutil.copy(result_output, dest)
+
+        except IOError as err:
+            logging.error("Unable to copy result txt file. %s", err)
+        else:
+            # Successful copy
+            logging.info('Copied result txt to ' + dest)
 
 
     def send_discord_notification(self, notification_image, camera_name, rec_timestamp):
