@@ -65,19 +65,24 @@ class UnifiPersonDetector():
                     #logging.debug('Capture: %s', split_row)
                     rec_time = split_row[2].split('.')[0]
                     rec_camera_id, rec_camera_name = split_row[4][6:].strip('[]').split('|')
-
+                    rec_duration = split_row[9]
                     logging.info('---------- New recording ----------')
                     logging.info('---------- Camera: %s ----------', rec_camera_name)
                     rec_id = split_row[7].split(':')[1]
 
-                    logging.info('---------- Camera ID: %s Time: %s Rec ID: %s ----------', rec_camera_name, rec_time, rec_id)
+                    logging.info('---------- Camera ID: %s Time: %s Rec ID: %s %s----------', rec_camera_name, rec_time, rec_id, rec_duration)
                     d1 = datetime.datetime.now().strftime("%H:%M:%S")
                     d1 = str(d1)
                     d2 = rec_time
                     FMT = "%H:%M:%S"
                     offby = datetime.datetime.strptime(d1, FMT) - datetime.datetime.strptime(d2, FMT)
+                    offby = offby.total_seconds()
+                    logging.info('---------- Recording time: %s ----------', rec_time)
+                    logging.info('---------- Process   time: %s ----------', d1)
                     logging.info('---------- Detection behind by %s ----------', offby)
                     rec_timestamp = rec_time.replace(":", "_")
+                    if (offby > 9000):
+                        continue
                     # Download the recording.
                     rec_file = self.download_recording(rec_id)
                     if not rec_file:
@@ -88,6 +93,7 @@ class UnifiPersonDetector():
 
                     if self.get_detection_result():
                         self.copy_result_movie(rec_camera_name,rec_timestamp)
+                        self.copy_results_output(rec_camera_name,rec_timestamp)
                         notification_image = self.get_notification_image(rec_camera_id, rec_id)
                         self.send_discord_notification(notification_image, rec_camera_name, rec_timestamp)
                     else:
@@ -96,7 +102,8 @@ class UnifiPersonDetector():
                     # Destroy recording
                     os.remove(rec_file)
 
-                time.sleep(1)
+                else:
+                    time.sleep(1)
 
 
     def download_recording(self, recording_id):
@@ -108,7 +115,7 @@ class UnifiPersonDetector():
         logging.debug('ENTERING FUNCTION: download_recording(params)')
         logging.debug('PARAM 1: recording_id=%s', recording_id)
 
-        recording_file_path = ("%s/%s" % (CURRENT_DIR, "recording.mp4"))
+        recording_file_path = ("%s/%s" % (CURRENT_DIR, "recording.avi"))
         url = ("http://%s%s%s%s%s" % (self.unifi_nvr_host, ":7080/api/2.0/recording/",
                                       recording_id, "/download/?apiKey=", self.unifi_api_key))
 
@@ -175,7 +182,7 @@ class UnifiPersonDetector():
                     person = search_results.group()
 
                     logging.info('Found person on result line: %s', line.strip())
-                    logging.info('%s',line.split(':')[1].strip().strip('%'))
+                    #logging.info('%s',line.split(':')[1].strip().strip('%'))
                     if int(person.split(':')[1].strip().strip('%')) > 80:
                         found_person = True
                         break
@@ -235,7 +242,7 @@ class UnifiPersonDetector():
         timestamp = rec_timestamp
         dest_path = ("%s/recordings/%s/%s/%s" % (CURRENT_DIR, year, month, day))
         dest = ("%s/%s_%s.mp4" % (dest_path, timestamp, camera_name))
-        recording_file_path = ("%s/%s" % (CURRENT_DIR, "recording.mp4"))
+        recording_file_path = ("%s/%s" % (CURRENT_DIR, "recording.avi"))
         if not os.path.exists(dest_path):
             os.makedirs(dest_path)
         try:
@@ -249,6 +256,29 @@ class UnifiPersonDetector():
         else:
             # Successful copy
             logging.info('Copied resultfile to ' + dest)
+
+
+    @staticmethod
+    def copy_results_output(camera_name, rec_timestamp):
+        """
+        This function copies the result.tx from darknet folder into an archive
+        """
+        result_output = "/opt/darknet/result.txt"
+        year, month, day = time.strftime("%Y,%m,%d").split(',')
+        #timestamp = time.strftime('%H_%M_%S')
+        timestamp = rec_timestamp
+        dest_path = ("%s/recordings/%s/%s/%s" % (CURRENT_DIR, year, month, day))
+        dest = ("%s/%s_%s.txt" % (dest_path, timestamp, camera_name))
+        if not os.path.exists(dest_path):
+            os.makedirs(dest_path)
+        try:
+            shutil.copy(result_output, dest)
+
+        except IOError as err:
+            logging.error("Unable to copy result txt file. %s", err)
+        else:
+            # Successful copy
+            logging.info('Copied result txt to ' + dest)
 
 
     def send_discord_notification(self, notification_image, camera_name, rec_timestamp):
