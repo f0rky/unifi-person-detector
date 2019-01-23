@@ -14,7 +14,6 @@ import shutil
 import datetime
 import sys
 import tailer
-import tailhead
 import requests
 import re
 import configparser
@@ -57,7 +56,7 @@ class UnifiPersonDetector():
         logging.debug('ENTERING FUNCTION: run()')
         list_cameras()
 
-        for line in tailhead.follow_path(self.unifi_record_log):
+        for line in tailer.follow(open(RECORD_LOG)):
             if line is not None:
                 if 'STOPPING' in line and 'motionRecording' in line:
                     split_row = line.split()
@@ -81,7 +80,7 @@ class UnifiPersonDetector():
                     logging.info('---------- Process   time: %s ----------', d1)
                     logging.info('---------- Detection behind by %s ----------', offby)
                     rec_timestamp = rec_time.replace(":", "_")
-                    if (offby > 9000):
+                    if offby not in range(-10, 8000):
                         continue
                     # Download the recording.
                     rec_file = self.download_recording(rec_id)
@@ -101,9 +100,8 @@ class UnifiPersonDetector():
 
                     # Destroy recording
                     os.remove(rec_file)
-
-                else:
-                    time.sleep(1)
+            else:
+                time.sleep(1)
 
 
     def download_recording(self, recording_id):
